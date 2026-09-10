@@ -1,0 +1,1792 @@
+<title>Iceberg Lineage Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #eef3f5;
+    --surface: #ffffff;
+    --surface-2: #e4ebee;
+    --border: #c7d3d9;
+    --text: #142228;
+    --text-dim: #5c6f77;
+    --accent: #0d7d84;
+    --accent-soft: #d9eeee;
+    --table-c: #6a5bd1;
+    --snap-c: #c07a1e;
+    --mf-c: #1f7fa6;
+    --df-c: #3c8f5c;
+    --del-c: #b6473f;
+    --shadow: 0 1px 2px rgba(20, 34, 40, 0.06), 0 8px 24px rgba(20, 34, 40, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a1216;
+      --surface: #101c21;
+      --surface-2: #16242a;
+      --border: #26383f;
+      --text: #e7eff1;
+      --text-dim: #8ea3ab;
+      --accent: #57d0d3;
+      --accent-soft: #12363a;
+      --table-c: #a99bff;
+      --snap-c: #e3a04c;
+      --mf-c: #5fb8dd;
+      --df-c: #6fce93;
+      --del-c: #e08079;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a1216;
+    --surface: #101c21;
+    --surface-2: #16242a;
+    --border: #26383f;
+    --text: #e7eff1;
+    --text-dim: #8ea3ab;
+    --accent: #57d0d3;
+    --accent-soft: #12363a;
+    --table-c: #a99bff;
+    --snap-c: #e3a04c;
+    --mf-c: #5fb8dd;
+    --df-c: #6fce93;
+    --del-c: #e08079;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  code, .mono, .num { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+  button, select, input { font-family: inherit; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header .table-name { color: var(--accent); }
+  .stats { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .stat {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .stat b { color: var(--text); font-size: 13px; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 7px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+  }
+  .legend .item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legend .line { width: 18px; height: 0; border-top: 2px solid var(--border); flex: none; }
+  .legend .line.dashed-red { border-top: 2px dashed var(--del-c); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  .toolbar label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    padding-left: 2px;
+  }
+  .toolbar input[type="text"], .toolbar select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12.5px;
+    padding: 5px 7px;
+  }
+  .toolbar input[type="text"] { width: 110px; }
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .btn.primary:hover { filter: brightness(1.08); color: var(--surface); }
+  .btn.danger:hover { border-color: var(--del-c); color: var(--del-c); }
+
+  #toast {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(4px); }
+  #toast.error { border-color: var(--del-c); color: var(--del-c); }
+  #toast.ok { border-color: var(--df-c); color: var(--df-c); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    background: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0 / 28px 28px;
+  }
+  #canvas-wrap.grabbing { cursor: grabbing; }
+  #canvas-wrap.loading::after {
+    content: "loading…";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+  }
+  svg#graph { position: absolute; top: 0; left: 0; }
+
+  .node-shape { stroke-width: 1.4; transition: filter 0.12s ease, stroke-width 0.12s ease; }
+  .node { cursor: pointer; }
+  .node .label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    fill: var(--text);
+    pointer-events: none;
+  }
+  .node .sublabel {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 9px;
+    fill: var(--text-dim);
+    pointer-events: none;
+  }
+  .node.dimmed { opacity: 0.25; }
+  .node.selected .node-shape { stroke-width: 2.6; filter: drop-shadow(0 0 6px var(--accent)); }
+  .node.fresh .node-shape { animation: pop 0.9s ease; }
+  @keyframes pop {
+    0% { filter: drop-shadow(0 0 0 var(--accent)); }
+    30% { filter: drop-shadow(0 0 10px var(--accent)); stroke-width: 3; }
+    100% { filter: drop-shadow(0 0 0 var(--accent)); }
+  }
+  .node:hover .node-shape { stroke-width: 2.2; }
+
+  .edge { fill: none; stroke: var(--border); stroke-width: 1.4; }
+  .edge.parent { stroke-dasharray: 3 3; }
+  .edge.dimmed { opacity: 0.15; }
+  .edge.lit { stroke: var(--accent); stroke-width: 2; opacity: 1; }
+  .edge.deleted { stroke: var(--del-c); stroke-dasharray: 2 3; }
+  .node.stale { opacity: 0.45; }
+  .node.stale .node-shape { stroke-dasharray: 3 3; }
+
+  #panel {
+    width: 380px;
+    flex: none;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 18px;
+  }
+  #panel .empty-hint { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin-top: 40px; }
+  #panel .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 0 0 4px; }
+  #panel h2 {
+    font-size: 15px; margin: 0 0 14px; word-break: break-all;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600;
+  }
+  .field-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .field-row .k { color: var(--text-dim); flex: none; }
+  .field-row .v { text-align: right; word-break: break-all; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .section-title { margin: 18px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  #file-preview { overflow-x: auto; font-size: 12px; color: var(--text-dim); }
+  #file-preview table.sql-result { font-size: 11.5px; }
+  #file-preview table.sql-result th, #file-preview table.sql-result td { padding: 4px 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; border: 1px solid var(--border); margin-bottom: 12px;
+  }
+  .link-btn {
+    display: block; width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 8px 10px; font-size: 12px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; margin-bottom: 6px; cursor: pointer;
+  }
+  .link-btn:hover { border-color: var(--accent); }
+
+  #zoom-controls { position: absolute; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+  #zoom-controls button {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 15px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  #zoom-controls button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* -- query-plan highlight overlay (separate from click-selection) -- */
+  .node.q-open .node-shape { stroke-width: 2; }
+  .node.q-scan .node-shape { stroke-width: 3; filter: drop-shadow(0 0 9px var(--accent)); }
+  .node.q-prune { opacity: 0.4; }
+  .node.q-prune .node-shape { stroke-dasharray: 3 3; }
+  .node.q-out { opacity: 0.12; }
+  .edge.q-open { stroke: var(--mf-c); stroke-width: 2; opacity: 1; }
+  .edge.q-scan { stroke: var(--accent); stroke-width: 2.6; opacity: 1; }
+  .edge.q-prune { stroke: var(--border); stroke-dasharray: 2 4; opacity: 0.5; }
+  .edge.q-out { opacity: 0.08; }
+
+  /* -- maintenance / expire-snapshots preview -- */
+  .node.exp-remove .node-shape { stroke: var(--del-c); stroke-dasharray: 4 3; }
+  .node.exp-remove { opacity: 0.55; }
+  .node.exp-remove .label, .node.exp-remove .sublabel { fill: var(--del-c); }
+  .edge.exp-remove { stroke: var(--del-c); stroke-dasharray: 3 3; opacity: 0.7; }
+  .node.exp-fadeout {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(0.8);
+  }
+  .edge.exp-fadeout { transition: opacity 0.5s ease; opacity: 0; }
+  #expire-summary { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  #expire-summary.warn { color: var(--del-c); }
+
+  /* -- SQL dock -- */
+  #sql-pane {
+    flex: none;
+    height: 260px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    min-height: 0;
+  }
+  #sql-pane.collapsed { display: none; }
+  .sql-left {
+    width: 38%;
+    min-width: 300px;
+    max-width: 480px;
+    border-right: 1px solid var(--border);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+  .sql-toolbar-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sql-toolbar-row select {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 12px; padding: 5px 7px; flex: 1; min-width: 0;
+  }
+  #sql-status { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+  #sql-status.error { color: var(--del-c); }
+  #sql-status.ok { color: var(--df-c); }
+  #sql-input {
+    flex: 1;
+    resize: none;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    padding: 10px;
+    line-height: 1.5;
+  }
+  #sql-input:focus { outline: none; border-color: var(--accent); }
+  .sql-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .sql-tabs { display: flex; gap: 4px; padding: 10px 14px 0; }
+  .sql-tab {
+    border: 1px solid var(--border); border-bottom: none; background: var(--surface-2); color: var(--text-dim);
+    padding: 5px 12px; font-size: 11.5px; border-radius: 7px 7px 0 0; cursor: pointer;
+  }
+  .sql-tab.active { background: var(--surface); color: var(--text); font-weight: 600; }
+  .sql-body { flex: 1; overflow: auto; padding: 0 14px 12px; border-top: 1px solid var(--border); margin-top: -1px; }
+  .sql-body .empty-hint { color: var(--text-dim); font-size: 12.5px; padding-top: 14px; }
+  table.sql-result { width: 100%; border-collapse: collapse; font-size: 12px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  table.sql-result th, table.sql-result td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.sql-result th { color: var(--text-dim); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+  .plan-line { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; align-items: baseline; }
+  .plan-line .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 3px; }
+  .plan-line .files { color: var(--text-dim); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; }
+</style>
+
+<div id="toast"></div>
+
+<header>
+  <h1>Iceberg Lineage Simulator <span id="table-name" class="table-name mono"></span></h1>
+  <div class="stats" id="stats"></div>
+</header>
+<div style="padding:6px 20px; font-size:11.5px; color:var(--text-dim); border-bottom:1px solid var(--border); background:var(--surface);">
+  Runs entirely in your browser — no server, no real files. Table state (snapshots, manifests, data, rows) is simulated in memory and saved to this browser's local storage only.
+</div>
+
+<div class="toolbar">
+  <button class="btn primary" id="btn-add-row">+ Add row</button>
+
+  <div class="group">
+    <label>Remove row</label>
+    <select id="del-row-id"></select>
+    <button class="btn danger" id="btn-del-row">Delete</button>
+  </div>
+
+  <div class="group">
+    <label>Add column</label>
+    <input type="text" id="col-name" placeholder="name" maxlength="40">
+    <select id="col-type">
+      <option value="string">string</option>
+      <option value="int">int</option>
+      <option value="long">long</option>
+      <option value="double">double</option>
+      <option value="boolean">boolean</option>
+      <option value="date">date</option>
+    </select>
+    <button class="btn" id="btn-add-col">Add</button>
+  </div>
+
+  <div class="group">
+    <label>Delete column</label>
+    <select id="del-col-name"></select>
+    <button class="btn danger" id="btn-del-col">Delete</button>
+  </div>
+
+  <div class="group">
+    <label>Maintenance</label>
+    <span id="compact-summary"></span>
+    <button class="btn" id="btn-compact" title="Rewrite all live data files into one consolidated file">Compact files</button>
+    <span id="expire-summary"></span>
+    <button class="btn" id="btn-preview-expire">Preview expire</button>
+    <button class="btn danger" id="btn-commit-expire">Expire snapshots</button>
+  </div>
+
+  <button class="btn danger" id="btn-reset" title="Wipe simulated state and recreate a single table / snapshot / manifest / data file">&#8634; Reset</button>
+
+  <button class="btn" id="btn-toggle-sql">&#9776; SQL</button>
+
+  <span style="margin-left:auto; font-size:12px; color:var(--text-dim)">
+    click a node for details &middot; drag to pan &middot; scroll to zoom
+  </span>
+</div>
+
+<div class="legend">
+  <span class="item"><span class="swatch" style="background:var(--table-c)"></span>table</span>
+  <span class="item"><span class="swatch" style="background:var(--snap-c)"></span>snapshot</span>
+  <span class="item"><span class="swatch" style="background:var(--mf-c)"></span>manifest file</span>
+  <span class="item"><span class="swatch" style="background:var(--df-c)"></span>data file</span>
+  <span class="item"><span class="line"></span>live reference</span>
+  <span class="item"><span class="line dashed-red"></span>delete marker — file removed by that manifest</span>
+</div>
+
+<main>
+  <div id="canvas-wrap">
+    <svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="zoom-controls">
+      <button id="zoom-in" title="Zoom in">+</button>
+      <button id="zoom-out" title="Zoom out">&minus;</button>
+      <button id="zoom-reset" title="Reset view">&#8634;</button>
+    </div>
+  </div>
+  <div id="panel"><div class="empty-hint">Select a node to inspect its metadata — snapshot summary, manifest counts, or data-file stats.</div></div>
+</main>
+
+<div id="sql-pane">
+  <div class="sql-left">
+    <div class="sql-toolbar-row">
+      <select id="sql-examples">
+        <option value="">example queries…</option>
+        <option value="SELECT * FROM mytable">SELECT * FROM mytable</option>
+        <option value="SELECT * FROM mytable WHERE id > 2">WHERE id &gt; 2</option>
+        <option value="SELECT id, name FROM mytable WHERE name = 'a'">WHERE name = 'a'</option>
+        <option value="SELECT * FROM mytable ORDER BY id DESC LIMIT 5">ORDER BY id DESC LIMIT 5</option>
+      </select>
+      <button class="btn primary" id="btn-run-sql">&#9654; Run</button>
+      <button class="btn" id="btn-clear-sql">Clear</button>
+    </div>
+    <textarea id="sql-input" spellcheck="false">SELECT * FROM mytable WHERE id > 2</textarea>
+    <span id="sql-status"></span>
+  </div>
+  <div class="sql-right">
+    <div class="sql-tabs">
+      <div class="sql-tab active" data-tab="results">Results</div>
+      <div class="sql-tab" data-tab="plan">Query plan</div>
+    </div>
+    <div class="sql-body" id="sql-body">
+      <div class="empty-hint">Run a query to see results here — the graph above will light up the snapshot, manifest files, and data files it actually reads.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Pure-JS, in-memory simulation of an Apache Iceberg table's metadata model.
+// No real files are written anywhere — everything (schema, snapshots, manifest
+// files, manifest lists, data files, even row bytes) lives in the `db` object.
+// This lets the whole teaching tool run 100% client-side with zero backend.
+//
+// Node-testable: no DOM references in this file.
+
+function uid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function randId() {
+  // looks like a real Iceberg snapshot id: a big pseudo-random integer, as a string
+  return String(Math.floor(Math.random() * 1e18) + 1e15);
+}
+
+const FIRST_NAMES = ['ada', 'grace', 'linus', 'margaret', 'alan', 'barbara', 'dennis', 'radia'];
+const WORDS = ['ice', 'berg', 'shelf', 'floe', 'glacier', 'frost', 'crevasse', 'arctic'];
+
+function randomValueFor(field, nextId) {
+  if (field.name === 'id') return nextId;
+  switch (field.type) {
+    case 'int':
+    case 'long':
+      return Math.floor(Math.random() * 99) + 1;
+    case 'double':
+      return Math.round(Math.random() * 10000) / 100;
+    case 'boolean':
+      return Math.random() < 0.5;
+    case 'date': {
+      const d = new Date(Date.now() - Math.floor(Math.random() * 1e10));
+      return d.toISOString().slice(0, 10);
+    }
+    case 'string':
+    default:
+      if (field.name === 'name') return FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+      return WORDS[Math.floor(Math.random() * WORDS.length)];
+  }
+}
+
+function freshDb() {
+  return {
+    tableName: 'ns.mytable',
+    schema: [
+      { id: 1, name: 'id', type: 'long', required: false },
+      { id: 2, name: 'name', type: 'string', required: false },
+    ],
+    nextFieldId: 3,
+    schemaId: 0,
+    nextSchemaId: 1,
+    snapshots: [], // { id, seq, timestampMs, operation, summary, schemaId, parentId, manifestIds, isCurrent }
+    manifests: {}, // id -> { id, path, addedSnapshotId, partitionSpecId, entries:[{dataFileId,status}], addedFilesCount, existingFilesCount, deletedFilesCount, addedRowsCount, existingRowsCount, deletedRowsCount, manifestLength, content }
+    dataFiles: {}, // id -> { id, path, rows, recordCount, fileSizeBytes, stats, format }
+    currentSnapshotId: null,
+  };
+}
+
+function makeDataFile(db, rows) {
+  const id = `00000-0-${uid()}.parquet`;
+  const stats = {};
+  db.schema.forEach(f => {
+    const vals = rows.map(r => r[f.name]).filter(v => v !== null && v !== undefined && typeof v !== 'boolean');
+    if (vals.length) {
+      stats[f.name] = { min: vals.reduce((a, b) => (a < b ? a : b)), max: vals.reduce((a, b) => (a > b ? a : b)) };
+    }
+  });
+  const fileSizeBytes = 300 + rows.length * 60 + db.schema.length * 18;
+  db.dataFiles[id] = {
+    id,
+    path: id,
+    rows: rows.map(r => ({ ...r })),
+    recordCount: rows.length,
+    fileSizeBytes,
+    stats,
+    format: 'PARQUET',
+  };
+  return id;
+}
+
+function makeManifest(db, { addedSnapshotId, entries }) {
+  const id = `${uid()}-m0.avro`;
+  const countRows = (status) =>
+    entries.filter(e => e.status === status).reduce((s, e) => s + db.dataFiles[e.dataFileId].recordCount, 0);
+  db.manifests[id] = {
+    id,
+    path: id,
+    addedSnapshotId,
+    partitionSpecId: 0,
+    entries: entries.slice(),
+    addedFilesCount: entries.filter(e => e.status === 1).length,
+    existingFilesCount: entries.filter(e => e.status === 0).length,
+    deletedFilesCount: entries.filter(e => e.status === 2).length,
+    addedRowsCount: countRows(1),
+    existingRowsCount: countRows(0),
+    deletedRowsCount: countRows(2),
+    manifestLength: 300 + entries.length * 180,
+    content: 0,
+  };
+  return id;
+}
+
+function currentManifestIds(db) {
+  if (!db.currentSnapshotId) return [];
+  const snap = db.snapshots.find(s => s.id === db.currentSnapshotId);
+  return snap ? snap.manifestIds : [];
+}
+
+function commitSnapshot(db, { id, operation, manifestIds, summary }) {
+  const seq = db.snapshots.length + 1;
+  db.snapshots.forEach(s => (s.isCurrent = false));
+  const snap = {
+    id,
+    seq,
+    timestampMs: Date.now(),
+    operation,
+    summary: summary || { operation },
+    schemaId: db.schemaId,
+    parentId: db.currentSnapshotId,
+    manifestIds: manifestIds.slice(),
+    isCurrent: true,
+  };
+  db.snapshots.push(snap);
+  db.currentSnapshotId = id;
+  return snap;
+}
+
+// ---- reachability: what's actually "live" from the current snapshot ----
+function reachable(db) {
+  const manifestIds = new Set(currentManifestIds(db));
+  const added = new Set();
+  const deleted = new Set();
+  manifestIds.forEach(mfId => {
+    const mf = db.manifests[mfId];
+    if (!mf) return;
+    mf.entries.forEach(e => {
+      if (e.status === 2) deleted.add(e.dataFileId);
+      else added.add(e.dataFileId);
+    });
+  });
+  const dataFileIds = new Set([...added].filter(id => !deleted.has(id)));
+  return { manifestIds, dataFileIds };
+}
+
+function liveRows(db) {
+  const { dataFileIds } = reachable(db);
+  const rows = [];
+  dataFileIds.forEach(id => rows.push(...db.dataFiles[id].rows));
+  return rows;
+}
+
+function nextIdValue(db) {
+  const rows = liveRows(db);
+  const ids = rows.map(r => r.id).filter(v => typeof v === 'number');
+  return ids.length ? Math.max(...ids) + 1 : Math.floor(Math.random() * 900) + 100;
+}
+
+// ---- operations ----
+
+function createFreshTable(db) {
+  const rows = [1, 2, 3].map((n, i) => ({ id: n, name: ['a', 'b', 'c'][i] }));
+  const dfId = makeDataFile(db, rows);
+  const snapId = randId();
+  const mfId = makeManifest(db, { addedSnapshotId: snapId, entries: [{ dataFileId: dfId, status: 1 }] });
+  commitSnapshot(db, {
+    id: snapId,
+    operation: 'append',
+    manifestIds: [mfId],
+    summary: { operation: 'append', 'added-data-files': '1', 'added-records': '3', 'total-data-files': '1', 'total-records': '3' },
+  });
+}
+
+function addRow(db) {
+  const hasId = db.schema.some(f => f.name === 'id');
+  const nextId = hasId ? nextIdValue(db) : null;
+  const row = {};
+  db.schema.forEach(f => {
+    row[f.name] = f.name === 'id' ? nextId : randomValueFor(f, nextId);
+  });
+  const dfId = makeDataFile(db, [row]);
+  const snapId = randId();
+  const mfId = makeManifest(db, { addedSnapshotId: snapId, entries: [{ dataFileId: dfId, status: 1 }] });
+  const manifestIds = [...currentManifestIds(db), mfId];
+  commitSnapshot(db, {
+    id: snapId,
+    operation: 'append',
+    manifestIds,
+    summary: { operation: 'append', 'added-data-files': '1', 'added-records': '1' },
+  });
+  return row;
+}
+
+function deleteRow(db, targetId) {
+  if (!db.schema.some(f => f.name === 'id')) throw new Error("table has no 'id' column to delete by");
+  const { dataFileIds } = reachable(db);
+  let found = false;
+  const entries = [];
+  dataFileIds.forEach(dfId => {
+    const df = db.dataFiles[dfId];
+    const hasMatch = df.rows.some(r => r.id === targetId);
+    if (!hasMatch) return;
+    found = true;
+    const remaining = df.rows.filter(r => r.id !== targetId);
+    entries.push({ dataFileId: dfId, status: 2 });
+    if (remaining.length > 0) {
+      const newDfId = makeDataFile(db, remaining);
+      entries.push({ dataFileId: newDfId, status: 1 });
+    }
+  });
+  if (!found) throw new Error(`no row with id ${targetId}`);
+  const snapId = randId();
+  const mfId = makeManifest(db, { addedSnapshotId: snapId, entries });
+  const manifestIds = [...currentManifestIds(db), mfId];
+  commitSnapshot(db, {
+    id: snapId,
+    operation: 'delete',
+    manifestIds,
+    summary: { operation: 'delete', 'deleted-records': '1' },
+  });
+}
+
+function addColumn(db, name, type) {
+  name = (name || '').trim();
+  if (!name) throw new Error('column name is required');
+  if (db.schema.some(f => f.name === name)) throw new Error(`column already exists: ${name}`);
+  db.schema.push({ id: db.nextFieldId++, name, type, required: false });
+  db.schemaId = db.nextSchemaId++;
+}
+
+function deleteColumn(db, name) {
+  if (!db.schema.some(f => f.name === name)) throw new Error(`no such column: ${name}`);
+  if (db.schema.length <= 1) throw new Error('cannot delete the last remaining column');
+  db.schema = db.schema.filter(f => f.name !== name);
+  db.schemaId = db.nextSchemaId++;
+}
+
+function compact(db) {
+  const { dataFileIds } = reachable(db);
+  if (dataFileIds.size <= 1) throw new Error('nothing to compact — already a single live data file');
+  const oldIds = [...dataFileIds];
+  const mergedRows = [];
+  oldIds.forEach(id => mergedRows.push(...db.dataFiles[id].rows));
+
+  // snapshot 1: delete the old small files (mirrors pyiceberg's overwrite() semantics)
+  const delSnapId = randId();
+  const delEntries = oldIds.map(id => ({ dataFileId: id, status: 2 }));
+  const delMfId = makeManifest(db, { addedSnapshotId: delSnapId, entries: delEntries });
+  commitSnapshot(db, {
+    id: delSnapId,
+    operation: 'delete',
+    manifestIds: [...currentManifestIds(db), delMfId],
+    summary: { operation: 'delete', 'deleted-data-files': String(oldIds.length) },
+  });
+
+  // snapshot 2: append the one consolidated file
+  const newDfId = makeDataFile(db, mergedRows);
+  const appSnapId = randId();
+  const appMfId = makeManifest(db, { addedSnapshotId: appSnapId, entries: [{ dataFileId: newDfId, status: 1 }] });
+  commitSnapshot(db, {
+    id: appSnapId,
+    operation: 'append',
+    manifestIds: [...currentManifestIds(db), appMfId],
+    summary: { operation: 'append', 'added-data-files': '1', 'added-records': String(mergedRows.length) },
+  });
+
+  return { removed: oldIds.length, merged: newDfId };
+}
+
+function expireSnapshots(db) {
+  const currentId = db.currentSnapshotId;
+  const others = db.snapshots.filter(s => s.id !== currentId);
+  if (!others.length) throw new Error('nothing to expire — only the current snapshot exists');
+  db.snapshots = db.snapshots.filter(s => s.id === currentId);
+
+  // garbage-collect manifests/data files no longer reachable from the retained snapshot
+  const { manifestIds, dataFileIds } = reachable(db);
+  Object.keys(db.manifests).forEach(id => { if (!manifestIds.has(id)) delete db.manifests[id]; });
+  Object.keys(db.dataFiles).forEach(id => { if (!dataFileIds.has(id)) delete db.dataFiles[id]; });
+
+  return { expired: others.length };
+}
+
+function resetTable(db0) {
+  const db = freshDb();
+  createFreshTable(db);
+  return db;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    uid,
+    randId,
+    freshDb,
+    makeDataFile,
+    makeManifest,
+    currentManifestIds,
+    commitSnapshot,
+    reachable,
+    liveRows,
+    nextIdValue,
+    createFreshTable,
+    addRow,
+    deleteRow,
+    addColumn,
+    deleteColumn,
+    compact,
+    expireSnapshots,
+    resetTable,
+  };
+}
+// Converts the in-memory sim `db` into the same {nodes, edges, schema, ...}
+// shape the (now-retired) Python backend used to produce, so the rendering
+// code barely has to change.
+function buildGraph(db) {
+  const nodes = [];
+  const edgeMap = new Map();
+  const addEdge = (from, to, kind, extra) => {
+    const key = `${from}|${to}|${kind}`;
+    if (!edgeMap.has(key)) edgeMap.set(key, { from, to, kind, ...extra });
+  };
+
+  nodes.push({ id: 'table', type: 'table', label: db.tableName });
+
+  const currentId = db.currentSnapshotId;
+
+  db.snapshots.forEach(snap => {
+    const snapId = `snap-${snap.id}`;
+    nodes.push({
+      id: snapId,
+      type: 'snapshot',
+      label: `snapshot ${snap.id}`,
+      snapshot_id: snap.id,
+      sequence_number: snap.seq,
+      timestamp_ms: snap.timestampMs,
+      operation: snap.operation,
+      summary: snap.summary,
+      schema_id: snap.schemaId,
+      parent_snapshot_id: snap.parentId,
+      is_current: snap.id === currentId,
+    });
+    addEdge('table', snapId, 'snapshot');
+    if (snap.parentId) addEdge(`snap-${snap.parentId}`, snapId, 'parent');
+
+    snap.manifestIds.forEach(mfId => {
+      const mf = db.manifests[mfId];
+      if (!mf) return;
+      const mfNodeId = `mf-${mf.id}`;
+      if (!nodes.some(n => n.id === mfNodeId)) {
+        nodes.push({
+          id: mfNodeId,
+          type: 'manifest_file',
+          label: mf.path,
+          path: mf.path,
+          content: mf.content,
+          added_snapshot_id: mf.addedSnapshotId,
+          partition_spec_id: mf.partitionSpecId,
+          added_files_count: mf.addedFilesCount,
+          existing_files_count: mf.existingFilesCount,
+          deleted_files_count: mf.deletedFilesCount,
+          added_rows_count: mf.addedRowsCount,
+          existing_rows_count: mf.existingRowsCount,
+          deleted_rows_count: mf.deletedRowsCount,
+          manifest_length: mf.manifestLength,
+        });
+      }
+      addEdge(snapId, mfNodeId, 'manifest_list');
+
+      mf.entries.forEach(e => {
+        const df = db.dataFiles[e.dataFileId];
+        if (!df) return;
+        const dfNodeId = `df-${df.id}`;
+        if (!nodes.some(n => n.id === dfNodeId)) {
+          nodes.push({
+            id: dfNodeId,
+            type: 'data_file',
+            label: df.path,
+            path: df.path,
+            file_format: df.format,
+            record_count: df.recordCount,
+            file_size_in_bytes: df.fileSizeBytes,
+            status: e.status,
+            snapshot_id: mf.addedSnapshotId,
+            partition: null,
+          });
+        }
+        addEdge(mfNodeId, dfNodeId, 'data_file', { status: e.status });
+      });
+    });
+  });
+
+  const hasId = db.schema.some(f => f.name === 'id');
+  let rows = [];
+  if (hasId) {
+    // duplicated (not imported) so this file has no cross-module dependency
+    // once both scripts are concatenated into one inline <script> in the page
+    const added = new Set();
+    const deleted = new Set();
+    (currentId ? db.snapshots.find(s => s.id === currentId).manifestIds : []).forEach(mfId => {
+      const mf = db.manifests[mfId];
+      if (!mf) return;
+      mf.entries.forEach(e => (e.status === 2 ? deleted : added).add(e.dataFileId));
+    });
+    const dataFileIds = [...added].filter(id => !deleted.has(id));
+    dataFileIds.forEach(id => rows.push(...db.dataFiles[id].rows));
+    rows = rows
+      .map(r => {
+        const out = {};
+        db.schema.forEach(f => (out[f.name] = f.name in r ? r[f.name] : null));
+        return out;
+      })
+      .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  }
+
+  return {
+    nodes,
+    edges: [...edgeMap.values()],
+    schema: db.schema.map(f => ({ id: f.id, name: f.name, type: f.type, required: f.required })),
+    schema_id: db.schemaId,
+    table_name: db.tableName,
+    rows,
+    has_id: hasId,
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { buildGraph };
+}
+// A tiny SQL front-end mirroring pyiceberg's own query-planning behavior:
+// pruning data files by column min/max stats before ever "reading" them.
+// Fully client-side — no real files, just the same decision logic.
+
+const STMT_RE = new RegExp(
+  '^\\s*select\\s+(.*?)\\s+from\\s+([\\w."]+)' +
+  '(?:\\s+where\\s+(.*?))?' +
+  '(?:\\s+order\\s+by\\s+(\\w+)(?:\\s+(asc|desc))?)?' +
+  '(?:\\s+limit\\s+(\\d+))?' +
+  '\\s*;?\\s*$',
+  'is'
+);
+
+function parseSql(sql) {
+  const m = STMT_RE.exec(sql.trim());
+  if (!m) throw new Error('only SELECT ... FROM ... [WHERE ...] [ORDER BY ...] [LIMIT n] is supported');
+  const colsRaw = m[1].trim();
+  const columns = colsRaw === '*' ? null : colsRaw.split(',').map(c => c.trim()).filter(Boolean);
+  return {
+    columns,
+    where: (m[3] || '').trim() || null,
+    orderBy: m[4] || null,
+    orderDir: (m[5] || 'asc').toLowerCase(),
+    limit: m[6] ? parseInt(m[6], 10) : null,
+  };
+}
+
+// ---- WHERE-clause tokenizer + recursive-descent parser ----
+function tokenize(s) {
+  const tokens = [];
+  const re = /\s*(<=|>=|!=|<>|=|<|>|\(|\)|,|'[^']*'|"[^"]*"|[A-Za-z_][\w.]*|-?\d+\.\d+|-?\d+)\s*/y;
+  let i = 0;
+  while (i < s.length) {
+    re.lastIndex = i;
+    const m = re.exec(s);
+    if (!m || m.index !== i) throw new Error(`cannot parse WHERE clause near: ${s.slice(i, i + 20)}`);
+    tokens.push(m[1]);
+    i = re.lastIndex;
+  }
+  return tokens;
+}
+
+function parseExpr(sql) {
+  const tokens = tokenize(sql);
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const next = () => tokens[pos++];
+
+  function parseOr() {
+    let left = parseAnd();
+    while (peek() && peek().toLowerCase() === 'or') {
+      next();
+      left = { type: 'or', left, right: parseAnd() };
+    }
+    return left;
+  }
+  function parseAnd() {
+    let left = parseNot();
+    while (peek() && peek().toLowerCase() === 'and') {
+      next();
+      left = { type: 'and', left, right: parseNot() };
+    }
+    return left;
+  }
+  function parseNot() {
+    if (peek() && peek().toLowerCase() === 'not') {
+      next();
+      return { type: 'not', node: parseNot() };
+    }
+    return parsePrimary();
+  }
+  function parsePrimary() {
+    if (peek() === '(') {
+      next();
+      const node = parseOr();
+      if (peek() !== ')') throw new Error("expected ')'");
+      next();
+      return node;
+    }
+    const field = next();
+    if (field === undefined) throw new Error('unexpected end of WHERE clause');
+    const op = peek();
+    if (op && op.toLowerCase() === 'is') {
+      next();
+      let neg = false;
+      if (peek() && peek().toLowerCase() === 'not') { next(); neg = true; }
+      if (!peek() || peek().toLowerCase() !== 'null') throw new Error("expected NULL after IS [NOT]");
+      next();
+      return { type: neg ? 'isnotnull' : 'isnull', field };
+    }
+    if (op && op.toLowerCase() === 'in') {
+      next();
+      if (peek() !== '(') throw new Error("expected '(' after IN");
+      next();
+      const values = [];
+      while (peek() !== ')') {
+        values.push(literal(next()));
+        if (peek() === ',') next();
+      }
+      next();
+      return { type: 'in', field, values };
+    }
+    if (!['=', '!=', '<>', '<', '<=', '>', '>='].includes(op)) {
+      throw new Error(`expected a comparison operator after ${field}, got: ${op}`);
+    }
+    next();
+    const value = literal(next());
+    return { type: 'cmp', field, op: op === '<>' ? '!=' : op, value };
+  }
+
+  function literal(tok) {
+    if (tok === undefined) throw new Error('unexpected end of WHERE clause');
+    if (/^'.*'$/.test(tok) || /^".*"$/.test(tok)) return tok.slice(1, -1);
+    if (/^-?\d+$/.test(tok)) return parseInt(tok, 10);
+    if (/^-?\d+\.\d+$/.test(tok)) return parseFloat(tok);
+    if (tok.toLowerCase() === 'true') return true;
+    if (tok.toLowerCase() === 'false') return false;
+    throw new Error(`invalid literal: ${tok}`);
+  }
+
+  const ast = parseOr();
+  if (pos !== tokens.length) throw new Error(`unexpected trailing input near: ${tokens.slice(pos).join(' ')}`);
+  return ast;
+}
+
+function evalRow(row, node) {
+  switch (node.type) {
+    case 'and': return evalRow(row, node.left) && evalRow(row, node.right);
+    case 'or': return evalRow(row, node.left) || evalRow(row, node.right);
+    case 'not': return !evalRow(row, node.node);
+    case 'isnull': return row[node.field] === null || row[node.field] === undefined;
+    case 'isnotnull': return !(row[node.field] === null || row[node.field] === undefined);
+    case 'in': return node.values.includes(row[node.field]);
+    case 'cmp': {
+      const v = row[node.field];
+      if (v === null || v === undefined) return false;
+      switch (node.op) {
+        case '=': return v === node.value;
+        case '!=': return v !== node.value;
+        case '<': return v < node.value;
+        case '<=': return v <= node.value;
+        case '>': return v > node.value;
+        case '>=': return v >= node.value;
+      }
+    }
+    default: return true;
+  }
+}
+
+// Conservative min/max-stats pruning, mirroring pyiceberg's InclusiveMetricsEvaluator:
+// returns true only when the file's stats PROVE no row could match.
+function canPruneFile(stats, node) {
+  switch (node.type) {
+    case 'and': return canPruneFile(stats, node.left) || canPruneFile(stats, node.right);
+    case 'or': return canPruneFile(stats, node.left) && canPruneFile(stats, node.right);
+    case 'not': return false; // conservative
+    case 'in': {
+      const stat = stats[node.field];
+      if (!stat) return false;
+      return node.values.every(v => (typeof v === 'number') && (v < stat.min || v > stat.max));
+    }
+    case 'cmp': {
+      const stat = stats[node.field];
+      if (!stat || typeof node.value !== 'number') return false;
+      switch (node.op) {
+        case '=': return node.value < stat.min || node.value > stat.max;
+        case '>': return node.value >= stat.max;
+        case '>=': return node.value > stat.max;
+        case '<': return node.value <= stat.min;
+        case '<=': return node.value < stat.min;
+        default: return false; // != can't generally be proven false via a range
+      }
+    }
+    default: return false;
+  }
+}
+
+// db: the sim-engine `db`. Returns the same shape the old Python /api/query did.
+function runQuery(db, sql, reachableFn) {
+  const parsed = parseSql(sql);
+  const ast = parsed.where ? parseExpr(parsed.where) : null;
+
+  const { dataFileIds } = reachableFn(db);
+  const scannedIds = [];
+  let matched = [];
+
+  dataFileIds.forEach(id => {
+    const df = db.dataFiles[id];
+    if (ast && canPruneFile(df.stats, ast)) return; // pruned — never "read"
+    scannedIds.push(`df-${df.id}`);
+    const rows = ast ? df.rows.filter(r => evalRow(r, ast)) : df.rows.slice();
+    matched.push(...rows);
+  });
+
+  const allCols = db.schema.map(f => f.name);
+  const columns = parsed.columns || allCols;
+  columns.forEach(c => {
+    if (!allCols.includes(c)) throw new Error(`unknown column: ${c}`);
+  });
+
+  if (parsed.orderBy) {
+    if (!allCols.includes(parsed.orderBy)) throw new Error(`unknown column in ORDER BY: ${parsed.orderBy}`);
+    const dir = parsed.orderDir === 'desc' ? -1 : 1;
+    matched = matched.slice().sort((a, b) => {
+      const av = a[parsed.orderBy], bv = b[parsed.orderBy];
+      if (av === bv) return 0;
+      return av < bv ? -1 * dir : 1 * dir;
+    });
+  }
+  if (parsed.limit !== null) matched = matched.slice(0, parsed.limit);
+
+  const rows = matched.map(r => {
+    const out = {};
+    columns.forEach(c => (out[c] = c in r ? r[c] : null));
+    return out;
+  });
+
+  return {
+    sql,
+    columns,
+    rows,
+    row_count: rows.length,
+    scanned_data_files: scannedIds,
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { parseSql, parseExpr, evalRow, canPruneFile, runQuery };
+}
+
+// ============ rendering / interaction (below) ============
+const COLOR = {
+  table: 'var(--table-c)',
+  snapshot: 'var(--snap-c)',
+  manifest_file: 'var(--mf-c)',
+  data_file: 'var(--df-c)',
+};
+const ROWTYPE = { table: 0, snapshot: 1, manifest_file: 2, data_file: 3 };
+const ROW_LABEL = ['TABLE', 'SNAPSHOTS', 'MANIFEST FILES', 'DATA FILES'];
+const ROW_H = 110, COL_W = 200, PAD_X = 110, PAD_Y = 60;
+
+let GRAPH = null;
+let nodesById = {};
+let selected = null;
+let scale = 1, tx = 20, ty = 20;
+
+const svg = document.getElementById('graph');
+const wrap = document.getElementById('canvas-wrap');
+const panel = document.getElementById('panel');
+
+function fmtBytes(n) {
+  if (n == null) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+function fmtTs(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
+}
+function short(id, n) {
+  n = n || 10;
+  return id.length > n ? id.slice(0, n) + '…' : id;
+}
+
+function showToast(msg, kind) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (kind ? ' ' + kind : '');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => { t.className = ''; }, 2600);
+}
+
+function applyTransform() {
+  svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  svg.style.transformOrigin = '0 0';
+}
+function fitToView(totalW, totalH) {
+  const rect = wrap.getBoundingClientRect();
+  const margin = 40;
+  scale = Math.min(1, (rect.width - margin * 2) / totalW, (rect.height - margin * 2) / totalH);
+  tx = (rect.width - totalW * scale) / 2;
+  ty = margin;
+  applyTransform();
+}
+
+function pathBetween(a, b) {
+  const my = (a.y + b.y) / 2;
+  return `M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`;
+}
+
+function neighbors(id) {
+  const set = new Set([id]);
+  GRAPH.edges.forEach(e => {
+    if (e.from === id) set.add(e.to);
+    if (e.to === id) set.add(e.from);
+  });
+  return set;
+}
+
+function clearSelection() {
+  selected = null;
+  svg.querySelectorAll('.node').forEach(el => el.classList.remove('dimmed', 'selected'));
+  svg.querySelectorAll('.edge').forEach(el => el.classList.remove('dimmed', 'lit'));
+  panel.innerHTML = '<div class="empty-hint">Select a node to inspect its metadata — snapshot summary, manifest counts, or data-file stats.</div>';
+}
+
+function selectNode(id) {
+  if (!nodesById[id]) return;
+  clearQueryHighlight();
+  selected = id;
+  const near = neighbors(id);
+  svg.querySelectorAll('.node').forEach(el => {
+    el.classList.toggle('dimmed', !near.has(el.dataset.id));
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  svg.querySelectorAll('.edge').forEach(el => {
+    const lit = el.dataset.from === id || el.dataset.to === id;
+    el.classList.toggle('lit', lit);
+    el.classList.toggle('dimmed', !lit);
+  });
+  renderPanel(nodesById[id]);
+}
+
+function renderPanel(n) {
+  let rows = [];
+  let related = [];
+
+  if (n.type === 'table') {
+    rows = [['type', 'table'], ['name', n.label]];
+    related = GRAPH.edges.filter(e => e.from === n.id).map(e => e.to);
+  } else if (n.type === 'snapshot') {
+    rows = [
+      ['snapshot id', n.snapshot_id],
+      ['sequence #', n.sequence_number],
+      ['timestamp', fmtTs(n.timestamp_ms)],
+      ['operation', (n.operation || '').replace('Operation.', '').toLowerCase()],
+      ['schema id', n.schema_id],
+      ['parent', n.parent_snapshot_id ?? '—'],
+      ['current head', n.is_current ? 'yes' : 'no'],
+    ];
+    Object.entries(n.summary || {}).forEach(([k, v]) => rows.push([k.replace(/-/g, ' '), v]));
+    related = GRAPH.edges.filter(e => e.from === n.id && e.kind === 'manifest_list').map(e => e.to);
+  } else if (n.type === 'manifest_file') {
+    rows = [
+      ['content', n.content === 1 ? 'deletes' : 'data'],
+      ['added by snapshot', n.added_snapshot_id],
+      ['partition spec', n.partition_spec_id],
+      ['added files', n.added_files_count],
+      ['existing files', n.existing_files_count],
+      ['deleted files', n.deleted_files_count],
+      ['added rows', n.added_rows_count],
+      ['existing rows', n.existing_rows_count],
+      ['manifest size', fmtBytes(n.manifest_length)],
+      ['path', n.path],
+    ];
+    related = GRAPH.edges.filter(e => e.to === n.id).map(e => e.from)
+      .concat(GRAPH.edges.filter(e => e.from === n.id).map(e => e.to));
+  } else {
+    rows = [
+      ['format', (n.file_format || '').replace('FileFormat.', '')],
+      ['records', n.record_count],
+      ['size', fmtBytes(n.file_size_in_bytes)],
+      ['status', ({0: 'existing', 1: 'added', 2: 'deleted'})[n.status] ?? n.status],
+      ['from snapshot', n.snapshot_id],
+      ['partition', n.partition || '(unpartitioned)'],
+      ['path', n.path],
+    ];
+    related = GRAPH.edges.filter(e => e.to === n.id).map(e => e.from);
+  }
+
+  const kicker = n.type.replace('_', ' ');
+  panel.innerHTML = `
+    <p class="kicker">${kicker}</p>
+    <span class="chip" style="border-color:${COLOR[n.type]}; color:${COLOR[n.type]}">● ${n.type === 'snapshot' ? 'snapshot' : n.type === 'manifest_file' ? 'manifest' : n.type === 'data_file' ? 'data file' : 'table'}</span>
+    <h2>${n.label}</h2>
+    ${rows.map(([k, v]) => `<div class="field-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')}
+    ${n.type === 'data_file' ? `<div class="section-title">Row preview</div><div id="file-preview">loading…</div>` : ''}
+    ${related.length ? `<div class="section-title">connected (${related.length})</div>` + related.map(id => {
+      const rn = nodesById[id];
+      return `<button class="link-btn" data-jump="${id}">${rn.type}: ${short(rn.label, 40)}</button>`;
+    }).join('') : ''}
+  `;
+  panel.querySelectorAll('[data-jump]').forEach(btn => {
+    btn.addEventListener('click', () => selectNode(btn.dataset.jump));
+  });
+
+  if (n.type === 'data_file') loadFilePreview(n);
+}
+
+function loadFilePreview(n) {
+  const el = document.getElementById('file-preview');
+  if (!el) return;
+  const bareId = n.id.slice('df-'.length);
+  const df = DB.dataFiles[bareId];
+  if (!df) { el.innerHTML = `<span style="color:var(--del-c)">file no longer in memory (garbage-collected by an expire)</span>`; return; }
+  if (!df.rows.length) { el.innerHTML = '<span class="empty-hint" style="margin:0">0 rows</span>'; return; }
+  const columns = DB.schema.map(f => f.name);
+  el.innerHTML = `
+    <table class="sql-result">
+      <thead><tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${df.rows.map(r => `<tr>${columns.map(c => `<td>${r[c] === null || r[c] === undefined ? '·' : r[c]}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
+function renderGraph(graph, freshIds) {
+  GRAPH = graph;
+  nodesById = {};
+  graph.nodes.forEach(n => nodesById[n.id] = n);
+
+  svg.innerHTML = '';
+
+  const byRow = { 0: [], 1: [], 2: [], 3: [] };
+  graph.nodes.forEach(n => byRow[ROWTYPE[n.type]].push(n));
+  byRow[1].sort((a, b) => a.timestamp_ms - b.timestamp_ms);
+  const snapOrder = {};
+  byRow[1].forEach((n, i) => snapOrder[n.id] = i);
+  const mfOrder = {};
+  graph.edges.filter(e => e.kind === 'manifest_list').forEach(e => {
+    if (!(e.to in mfOrder)) mfOrder[e.to] = snapOrder[e.from] ?? 0;
+  });
+  byRow[2].sort((a, b) => (mfOrder[a.id] ?? 0) - (mfOrder[b.id] ?? 0));
+  const dfOrder = {};
+  graph.edges.filter(e => e.kind === 'data_file').forEach(e => {
+    if (!(e.to in dfOrder)) dfOrder[e.to] = mfOrder[e.from] ?? 0;
+  });
+  byRow[3].sort((a, b) => (dfOrder[a.id] ?? 0) - (dfOrder[b.id] ?? 0));
+
+  const maxCols = Object.values(byRow).reduce((m, a) => Math.max(m, a.length), 1);
+  const pos = {};
+  [0, 1, 2, 3].forEach(row => {
+    byRow[row].forEach((n, i) => {
+      pos[n.id] = {
+        x: PAD_X + i * COL_W + (row === 0 ? maxCols * COL_W / 2 - COL_W / 2 : 0),
+        y: PAD_Y + row * ROW_H,
+      };
+    });
+  });
+
+  const totalW = PAD_X * 2 + maxCols * COL_W;
+  const totalH = PAD_Y * 2 + 3 * ROW_H + 60;
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border)"></path>
+  </marker>`;
+  svg.appendChild(defs);
+
+  [0, 1, 2, 3].forEach(row => {
+    if (!byRow[row].length) return;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', 4);
+    t.setAttribute('y', PAD_Y + row * ROW_H - 24);
+    t.setAttribute('class', 'sublabel');
+    t.setAttribute('style', 'font-size:10px; letter-spacing:0.08em;');
+    t.textContent = ROW_LABEL[row];
+    svg.appendChild(t);
+  });
+
+  graph.edges.forEach(e => {
+    const a = pos[e.from], b = pos[e.to];
+    if (!a || !b) return;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', pathBetween(a, b));
+    p.setAttribute('class', 'edge' + (e.kind === 'parent' ? ' parent' : '') + (e.status === 2 ? ' deleted' : ''));
+    p.setAttribute('marker-end', 'url(#arrow)');
+    p.dataset.from = e.from;
+    p.dataset.to = e.to;
+    p.dataset.kind = e.kind;
+    svg.appendChild(p);
+  });
+
+  const { manifests: liveManifests, dataFiles: liveDataFiles } = reachableFromCurrentSnapshot(graph);
+  graph.nodes.forEach(n => {
+    const p = pos[n.id];
+    const isStale = (n.type === 'manifest_file' && !liveManifests.has(n.id))
+      || (n.type === 'data_file' && !liveDataFiles.has(n.id));
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'node' + (freshIds && freshIds.has(n.id) ? ' fresh' : '') + (isStale ? ' stale' : ''));
+    g.setAttribute('transform', `translate(${p.x}, ${p.y})`);
+    g.dataset.id = n.id;
+
+    const w = 168, h = 40;
+    const rx = n.type === 'table' ? 10 : n.type === 'snapshot' ? h / 2 : n.type === 'manifest_file' ? 6 : 3;
+    const shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    shape.setAttribute('x', -w / 2); shape.setAttribute('y', -h / 2);
+    shape.setAttribute('width', w); shape.setAttribute('height', h);
+    shape.setAttribute('rx', rx);
+    shape.setAttribute('class', 'node-shape');
+    shape.setAttribute('fill', 'var(--surface)');
+    shape.setAttribute('stroke', COLOR[n.type]);
+    g.appendChild(shape);
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', -w / 2 + 12);
+    dot.setAttribute('cy', 0);
+    dot.setAttribute('r', 4);
+    dot.setAttribute('fill', COLOR[n.type]);
+    g.appendChild(dot);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'label');
+    label.setAttribute('x', -w / 2 + 22);
+    label.setAttribute('y', n.type === 'table' ? 4 : -3);
+    label.textContent = n.type === 'table' ? n.label
+      : n.type === 'snapshot' ? `#${String(n.sequence_number).padStart(2, '0')} ${short(String(n.snapshot_id), 12)}`
+      : short(n.label, 18);
+    g.appendChild(label);
+
+    if (n.type !== 'table') {
+      const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      sub.setAttribute('class', 'sublabel');
+      sub.setAttribute('x', -w / 2 + 22);
+      sub.setAttribute('y', 12);
+      sub.textContent =
+        n.type === 'snapshot' ? (n.operation || '').replace('Operation.', '').toLowerCase() + (n.is_current ? '  ★ current' : '')
+        : n.type === 'manifest_file' ? `+${n.added_files_count} files` + (isStale ? '  (stale)' : '')
+        : `${n.record_count} rows · ${fmtBytes(n.file_size_in_bytes)}` + (isStale ? '  · removed' : '');
+      g.appendChild(sub);
+    }
+
+    g.addEventListener('click', (ev) => { ev.stopPropagation(); selectNode(n.id); });
+    svg.appendChild(g);
+  });
+
+  document.getElementById('table-name').textContent = (graph.nodes.find(n => n.type === 'table') || {}).label || '';
+  const stats = [
+    ['snapshots', byRow[1].length],
+    ['manifest files', byRow[2].length],
+    ['data files', byRow[3].length],
+    ['total rows', byRow[3].reduce((s, n) => s + (n.record_count || 0), 0)],
+  ];
+  document.getElementById('stats').innerHTML = stats.map(([k, v]) => `<div class="stat">${k} <b class="num">${v}</b></div>`).join('');
+
+  const delSelect = document.getElementById('del-col-name');
+  delSelect.innerHTML = (graph.schema || []).map(f => `<option value="${f.name}">${f.name} : ${f.type}</option>`).join('');
+
+  const delRowSelect = document.getElementById('del-row-id');
+  const rows = graph.rows || [];
+  delRowSelect.innerHTML = rows.length
+    ? rows.map(r => `<option value="${r.id}">#${r.id} ${r.name != null ? '· ' + r.name : ''}</option>`).join('')
+    : '<option value="">(no rows)</option>';
+  const rowBtnDisabled = !graph.has_id || !rows.length;
+  document.getElementById('btn-del-row').disabled = rowBtnDisabled;
+  delRowSelect.disabled = rowBtnDisabled;
+
+  fitToView(totalW, totalH);
+  updateExpireSummary();
+  updateCompactSummary();
+
+  if (selected && nodesById[selected]) {
+    selectNode(selected);
+  } else {
+    const currentSnap = graph.nodes.find(n => n.type === 'snapshot' && n.is_current);
+    if (currentSnap) selectNode(currentSnap.id);
+  }
+}
+
+function idsOf(graph) { return new Set(graph.nodes.map(n => n.id)); }
+
+function saveState() {
+  try { localStorage.setItem('iceberg-sim-db', JSON.stringify(DB)); } catch (e) { /* ignore quota/private-mode errors */ }
+}
+
+function refresh(action) {
+  wrap.classList.add('loading');
+  try {
+    const before = GRAPH ? idsOf(GRAPH) : new Set();
+    if (action) action(); // mutates DB in place; may throw
+    const graph = buildGraph(DB);
+    const fresh = new Set(graph.nodes.map(n => n.id).filter(id => !before.has(id)));
+    renderGraph(graph, fresh);
+    saveState();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    wrap.classList.remove('loading');
+  }
+  return Promise.resolve();
+}
+
+document.getElementById('btn-add-row').addEventListener('click', () => {
+  refresh(() => addRow(DB)).then(() => showToast('Row added — new snapshot + manifest + data file', 'ok'));
+});
+
+document.getElementById('btn-del-row').addEventListener('click', () => {
+  const sel = document.getElementById('del-row-id');
+  const id = sel.value;
+  if (id === '') { showToast('No row selected', 'error'); return; }
+  refresh(() => deleteRow(DB, Number(id))).then(() => showToast(`Row #${id} deleted — new snapshot + manifest`, 'ok'));
+});
+
+document.getElementById('btn-add-col').addEventListener('click', () => {
+  const name = document.getElementById('col-name').value.trim();
+  const type = document.getElementById('col-type').value;
+  if (!name) { showToast('Enter a column name', 'error'); return; }
+  refresh(() => addColumn(DB, name, type)).then(() => {
+    showToast(`Column "${name}" added — new schema, no new data file`, 'ok');
+    document.getElementById('col-name').value = '';
+  });
+});
+
+document.getElementById('btn-del-col').addEventListener('click', () => {
+  const name = document.getElementById('del-col-name').value;
+  if (!name) { showToast('No column selected', 'error'); return; }
+  refresh(() => deleteColumn(DB, name)).then(() => showToast(`Column "${name}" deleted`, 'ok'));
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!confirm('Reset simulated state? This recreates a single table with one snapshot, one manifest file, and one data file.')) return;
+  selected = null;
+  refresh(() => { DB = resetTable(); }).then(() => showToast('Reset — back to a single table / snapshot / manifest / data file', 'ok'));
+});
+
+document.getElementById('canvas-wrap').addEventListener('click', () => { clearSelection(); clearQueryHighlight(); });
+
+// ---- SQL pane ----
+function reachableFromCurrentSnapshot(graph) {
+  const current = graph.nodes.find(n => n.type === 'snapshot' && n.is_current);
+  const manifests = new Set();
+  const dataFiles = new Set();
+  if (!current) return { manifests, dataFiles, current: null };
+  graph.edges.filter(e => e.from === current.id && e.kind === 'manifest_list').forEach(e => manifests.add(e.to));
+  graph.edges.filter(e => e.kind === 'data_file' && manifests.has(e.from) && e.status !== 2).forEach(e => dataFiles.add(e.to));
+  return { manifests, dataFiles, current };
+}
+
+function clearQueryHighlight() {
+  svg.querySelectorAll('.node').forEach(el => el.classList.remove('q-open', 'q-scan', 'q-prune', 'q-out'));
+  svg.querySelectorAll('.edge').forEach(el => el.classList.remove('q-open', 'q-scan', 'q-prune', 'q-out'));
+}
+
+function applyQueryHighlight(scannedIds) {
+  if (!GRAPH) return;
+  clearSelection();
+  clearQueryHighlight();
+  const { manifests, dataFiles, current } = reachableFromCurrentSnapshot(GRAPH);
+  const scanned = new Set(scannedIds);
+
+  svg.querySelectorAll('.node').forEach(el => {
+    const id = el.dataset.id;
+    if (id === 'table' || (current && id === current.id) || manifests.has(id)) {
+      el.classList.add('q-open');
+    } else if (dataFiles.has(id)) {
+      el.classList.add(scanned.has(id) ? 'q-scan' : 'q-prune');
+    } else {
+      el.classList.add('q-out');
+    }
+  });
+
+  svg.querySelectorAll('.edge').forEach(el => {
+    const from = el.dataset.from, to = el.dataset.to, kind = el.dataset.kind;
+    if (kind === 'snapshot' && current && to === current.id) { el.classList.add('q-open'); return; }
+    if (kind === 'manifest_list' && current && from === current.id && manifests.has(to)) { el.classList.add('q-open'); return; }
+    if (kind === 'data_file' && manifests.has(from) && dataFiles.has(to)) {
+      el.classList.add(scanned.has(to) ? 'q-scan' : 'q-prune');
+      return;
+    }
+    el.classList.add('q-out');
+  });
+}
+
+let lastResult = null;
+
+function renderResultsTab(result) {
+  if (!result.rows.length) return '<div class="empty-hint">0 rows</div>';
+  const cols = result.columns;
+  return `<table class="sql-result"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
+    result.rows.map(r => `<tr>${cols.map(c => `<td>${r[c] === null || r[c] === undefined ? '·' : r[c]}</td>`).join('')}</tr>`).join('')
+  }</tbody></table>`;
+}
+
+function renderPlanTab(result) {
+  const { manifests, dataFiles, current } = reachableFromCurrentSnapshot(GRAPH);
+  const scanned = new Set(result.scanned_data_files);
+  const prunedIds = [...dataFiles].filter(id => !scanned.has(id));
+  const line = (color, title, ids) => `
+    <div class="plan-line">
+      <span class="dot" style="background:${color}"></span>
+      <div>
+        <div>${title}</div>
+        ${ids.length ? `<div class="files">${ids.map(id => (nodesById[id] || {}).label || id).join(', ')}</div>` : ''}
+      </div>
+    </div>`;
+  return [
+    line('var(--snap-c)', `Snapshot used: #${current ? current.sequence_number : '—'} (current head)`, []),
+    line('var(--mf-c)', `Manifest files opened to read stats/entries: ${manifests.size}`, [...manifests]),
+    line('var(--accent)', `Data files actually read: ${scanned.size} of ${dataFiles.size}`, [...scanned]),
+    prunedIds.length ? line('var(--border)', `Data files skipped via column stats (pruned, never opened): ${prunedIds.length}`, prunedIds) : '',
+  ].join('');
+}
+
+function showSqlTab(tab) {
+  document.querySelectorAll('.sql-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const body = document.getElementById('sql-body');
+  if (!lastResult) {
+    body.innerHTML = '<div class="empty-hint">Run a query to see results here — the graph above will light up the snapshot, manifest files, and data files it actually reads.</div>';
+    return;
+  }
+  body.innerHTML = tab === 'plan' ? renderPlanTab(lastResult) : renderResultsTab(lastResult);
+}
+
+document.querySelectorAll('.sql-tab').forEach(t => t.addEventListener('click', () => showSqlTab(t.dataset.tab)));
+
+document.getElementById('sql-examples').addEventListener('change', (e) => {
+  if (e.target.value) document.getElementById('sql-input').value = e.target.value;
+  e.target.value = '';
+});
+
+document.getElementById('btn-run-sql').addEventListener('click', () => {
+  const sql = document.getElementById('sql-input').value.trim();
+  const status = document.getElementById('sql-status');
+  if (!sql) return;
+  status.textContent = '';
+  status.className = '';
+  try {
+    const t0 = performance.now();
+    const data = runQuery(DB, sql, reachable);
+    data.elapsed_ms = Math.round((performance.now() - t0) * 10) / 10;
+    lastResult = data;
+    const n = data.scanned_data_files.length;
+    status.textContent = `${data.row_count} row${data.row_count === 1 ? '' : 's'} · ${data.elapsed_ms} ms · scanned ${n} file${n === 1 ? '' : 's'}`;
+    status.className = 'ok';
+    applyQueryHighlight(data.scanned_data_files);
+    showSqlTab('results');
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'error';
+  }
+});
+
+document.getElementById('btn-clear-sql').addEventListener('click', () => {
+  lastResult = null;
+  clearQueryHighlight();
+  const status = document.getElementById('sql-status');
+  status.textContent = '';
+  status.className = '';
+  showSqlTab('results');
+});
+
+document.getElementById('btn-toggle-sql').addEventListener('click', () => {
+  document.getElementById('sql-pane').classList.toggle('collapsed');
+});
+
+// ---- maintenance: expire snapshots ----
+function computeExpiryPreview() {
+  const { manifests, dataFiles } = reachableFromCurrentSnapshot(GRAPH);
+  return {
+    snapshots: GRAPH.nodes.filter(n => n.type === 'snapshot' && !n.is_current),
+    manifestFiles: GRAPH.nodes.filter(n => n.type === 'manifest_file' && !manifests.has(n.id)),
+    dataFiles: GRAPH.nodes.filter(n => n.type === 'data_file' && !dataFiles.has(n.id)),
+  };
+}
+
+function clearExpiryPreview() {
+  svg.querySelectorAll('.exp-remove').forEach(el => el.classList.remove('exp-remove'));
+}
+
+function updateCompactSummary() {
+  const el = document.getElementById('compact-summary');
+  const btn = document.getElementById('btn-compact');
+  if (!GRAPH) { el.textContent = ''; return; }
+  const { dataFiles } = reachableFromCurrentSnapshot(GRAPH);
+  const n = dataFiles.size;
+  if (n <= 1) {
+    el.textContent = 'already 1 file';
+    el.className = '';
+    btn.disabled = true;
+  } else {
+    el.textContent = `${n} live data files`;
+    el.className = 'warn';
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btn-compact').addEventListener('click', () => {
+  const { dataFiles } = reachableFromCurrentSnapshot(GRAPH);
+  const n = dataFiles.size;
+  if (!confirm(`Compact ${n} live data files into a single file? This rewrites all current rows into one new data file (recorded as a delete + append snapshot, same as Iceberg's RewriteDataFiles).`)) return;
+  refresh(() => compact(DB)).then(() => showToast(`Compacted ${n} files into 1`, 'ok'));
+});
+
+function updateExpireSummary() {
+  const el = document.getElementById('expire-summary');
+  if (!GRAPH) { el.textContent = ''; return; }
+  const prev = computeExpiryPreview();
+  const n = prev.snapshots.length;
+  const commitBtn = document.getElementById('btn-commit-expire');
+  const previewBtn = document.getElementById('btn-preview-expire');
+  if (!n) {
+    el.textContent = 'nothing to expire';
+    el.className = '';
+    commitBtn.disabled = true;
+    previewBtn.disabled = true;
+  } else {
+    el.textContent = `${n} old snapshot${n === 1 ? '' : 's'} · ${prev.manifestFiles.length} manifest(s) · ${prev.dataFiles.length} data file(s)`;
+    el.className = 'warn';
+    commitBtn.disabled = false;
+    previewBtn.disabled = false;
+  }
+}
+
+document.getElementById('btn-preview-expire').addEventListener('click', () => {
+  clearSelection();
+  clearQueryHighlight();
+  clearExpiryPreview();
+  const prev = computeExpiryPreview();
+  [...prev.snapshots, ...prev.manifestFiles, ...prev.dataFiles].forEach(n => {
+    const el = svg.querySelector(`[data-id="${n.id}"]`);
+    if (el) el.classList.add('exp-remove');
+  });
+  const removeIds = new Set([...prev.snapshots, ...prev.manifestFiles, ...prev.dataFiles].map(n => n.id));
+  svg.querySelectorAll('.edge').forEach(el => {
+    if (removeIds.has(el.dataset.from) || removeIds.has(el.dataset.to)) el.classList.add('exp-remove');
+  });
+  showToast(`Previewing expiry: ${prev.snapshots.length} snapshot(s) would be removed`, 'ok');
+});
+
+document.getElementById('btn-commit-expire').addEventListener('click', () => {
+  const prev = computeExpiryPreview();
+  if (!prev.snapshots.length) return;
+  if (!confirm(`Expire ${prev.snapshots.length} old snapshot(s)? This removes ${prev.manifestFiles.length} manifest file(s) and ${prev.dataFiles.length} data file(s) no longer reachable from the current snapshot.`)) return;
+
+  try {
+    const before = idsOf(GRAPH);
+    expireSnapshots(DB);
+    const data = buildGraph(DB);
+    const after = idsOf(data);
+    const removedIds = [...before].filter(id => !after.has(id));
+
+    clearExpiryPreview();
+    const removedSet = new Set(removedIds);
+    svg.querySelectorAll('.node').forEach(el => { if (removedSet.has(el.dataset.id)) el.classList.add('exp-fadeout'); });
+    svg.querySelectorAll('.edge').forEach(el => {
+      if (removedSet.has(el.dataset.from) || removedSet.has(el.dataset.to)) el.classList.add('exp-fadeout');
+    });
+    showToast(`Expired — removed ${removedIds.length} node(s)`, 'ok');
+    setTimeout(() => { renderGraph(data, new Set()); saveState(); }, 480);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+});
+
+let dragging = false, lastX = 0, lastY = 0;
+wrap.addEventListener('mousedown', (e) => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  wrap.classList.add('grabbing');
+});
+window.addEventListener('mouseup', () => { dragging = false; wrap.classList.remove('grabbing'); });
+window.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  tx += e.clientX - lastX; ty += e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  applyTransform();
+});
+wrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0015;
+  const newScale = Math.min(2.5, Math.max(0.3, scale + delta));
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  tx = mx - (mx - tx) * (newScale / scale);
+  ty = my - (my - ty) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+document.getElementById('zoom-in').addEventListener('click', () => { scale = Math.min(2.5, scale + 0.15); applyTransform(); });
+document.getElementById('zoom-out').addEventListener('click', () => { scale = Math.max(0.3, scale - 0.15); applyTransform(); });
+document.getElementById('zoom-reset').addEventListener('click', () => GRAPH && fitToView(
+  parseFloat(svg.getAttribute('width')), parseFloat(svg.getAttribute('height'))
+));
+
+// ---- boot: load simulated state from this browser's localStorage, or start fresh ----
+let DB;
+try {
+  const raw = localStorage.getItem('iceberg-sim-db');
+  DB = raw ? JSON.parse(raw) : null;
+} catch (e) {
+  DB = null;
+}
+if (!DB || !Array.isArray(DB.snapshots) || !DB.snapshots.length) {
+  DB = freshDb();
+  createFreshTable(DB);
+}
+
+refresh();
+</script>

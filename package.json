@@ -1,0 +1,11 @@
+{
+  "name": "iceberg-sim",
+  "private": true,
+  "description": "Dev-only test harness for index.html. The page itself has zero dependencies — src/*.js are inlined into it, this package.json is only for test/smoke-test.js.",
+  "scripts": {
+    "test": "node test/smoke-test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
