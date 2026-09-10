@@ -275,11 +275,29 @@ function expireSnapshots(db) {
   const others = db.snapshots.filter(s => s.id !== currentId);
   if (!others.length) throw new Error('nothing to expire — only the current snapshot exists');
   db.snapshots = db.snapshots.filter(s => s.id === currentId);
+  const current = db.snapshots[0];
 
-  // garbage-collect manifests/data files no longer reachable from the retained snapshot
-  const { manifestIds, dataFileIds } = reachable(db);
-  Object.keys(db.manifests).forEach(id => { if (!manifestIds.has(id)) delete db.manifests[id]; });
-  Object.keys(db.dataFiles).forEach(id => { if (!dataFileIds.has(id)) delete db.dataFiles[id]; });
+  // Ground truth, computed once from the *full* (untrimmed) manifest list —
+  // this must stay fixed while we decide what bookkeeping to discard below.
+  const { dataFileIds: liveIds } = reachable(db);
+
+  // Manifests are carried forward in every snapshot's manifest list forever,
+  // including pure "delete" manifests whose entries only mark other files as
+  // removed (e.g. compaction's delete-manifest, or a plain row delete). Once
+  // none of a manifest's entries touch a currently-live file, it — and the
+  // manifest(s) that originally added those now-dead files — no longer
+  // affects the live set at all and can be reclaimed. This is what actually
+  // removes the manifests that belonged to expired/superseded snapshots,
+  // instead of letting them linger forever in the current snapshot's list.
+  current.manifestIds = current.manifestIds.filter(mfId => {
+    const mf = db.manifests[mfId];
+    return mf && mf.entries.some(e => liveIds.has(e.dataFileId));
+  });
+
+  // garbage-collect manifests/data files no longer referenced at all
+  const keptManifestIds = new Set(current.manifestIds);
+  Object.keys(db.manifests).forEach(id => { if (!keptManifestIds.has(id)) delete db.manifests[id]; });
+  Object.keys(db.dataFiles).forEach(id => { if (!liveIds.has(id)) delete db.dataFiles[id]; });
 
   return { expired: others.length };
 }
