@@ -1292,8 +1292,8 @@ function renderPanel(n) {
     <p class="kicker">${kicker}</p>
     <span class="chip" style="border-color:${COLOR[n.type]}; color:${COLOR[n.type]}">● ${n.type === 'snapshot' ? 'snapshot' : n.type === 'manifest_file' ? 'manifest' : n.type === 'data_file' ? 'data file' : 'table'}</span>
     <h2>${n.label}</h2>
-    ${rows.map(([k, v]) => `<div class="field-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')}
     ${n.type === 'data_file' ? `<div class="section-title">Row preview</div><div id="file-preview">loading…</div>` : ''}
+    ${rows.map(([k, v]) => `<div class="field-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')}
     ${related.length ? `<div class="section-title">connected (${related.length})</div>` + related.map(id => {
       const rn = nodesById[id];
       return `<button class="link-btn" data-jump="${id}">${rn.type}: ${short(rn.label, 40)}</button>`;
