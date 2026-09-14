@@ -1,4 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Iceberg Lineage Simulator</title>
+<meta name="description" content="An interactive, in-browser simulator for learning Apache Iceberg's table format: snapshots, manifest lists, manifest files, data files, schema evolution, compaction, and snapshot expiration — with a SQL pane that shows real column-stats file pruning. No backend, no real files.">
+<meta name="keywords" content="Apache Iceberg, Iceberg table format, Iceberg snapshots, Iceberg manifest file, Iceberg compaction, data lakehouse, learn Iceberg, Iceberg tutorial, Iceberg simulator">
+<link rel="canonical" href="https://iklotho.github.io/iceberg-simulator/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%8A%3C/text%3E%3C/svg%3E">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Iceberg Lineage Simulator">
+<meta property="og:description" content="Learn Apache Iceberg's table format hands-on: watch snapshots, manifests, and data files change as you add rows, evolve the schema, compact files, and expire snapshots — entirely in your browser.">
+<meta property="og:url" content="https://iklotho.github.io/iceberg-simulator/">
+<meta property="og:site_name" content="Iceberg Lineage Simulator">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Iceberg Lineage Simulator">
+<meta name="twitter:description" content="An interactive, in-browser simulator for learning Apache Iceberg's table format — snapshots, manifests, compaction, expiration, and SQL file pruning.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Iceberg Lineage Simulator",
+  "url": "https://iklotho.github.io/iceberg-simulator/",
+  "description": "An interactive, in-browser simulator for learning Apache Iceberg's table format: snapshots, manifest lists, manifest files, data files, schema evolution, compaction, and snapshot expiration.",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any (runs in a web browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root {
@@ -360,6 +393,8 @@
   .plan-line .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 3px; }
   .plan-line .files { color: var(--text-dim); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; }
 </style>
+</head>
+<body>
 
 <div id="toast"></div>
 
@@ -1808,3 +1843,5 @@ if (!DB || !Array.isArray(DB.snapshots) || !DB.snapshots.length) {
 
 refresh();
 </script>
+</body>
+</html>

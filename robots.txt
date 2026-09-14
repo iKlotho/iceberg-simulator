@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://iklotho.github.io/iceberg-simulator/sitemap.xml
